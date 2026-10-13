@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Peta GeoJSON Saya</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- CSS Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <style>
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      height: 100vh;
+      width: 100vw;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Wadah Peta -->
+  <div id="map"></div>
+
+  <!-- JS Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // 1. Buat Peta Leaflet
+    var map = L.map('map').setView([-2.548926, 118.014863], 5);
+
+    // 2. Tambahkan Peta Dasar OpenStreetMap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // 3. Baca File GeoJSON
+    fetch('map.geojson')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('File map.geojson tidak ditemukan!');
+        }
+        return response.json();
+      })
+      .then(geojsonData => {
+        // Tampilkan data ke peta
+        var geojsonLayer = L.geoJSON(geojsonData, {
+          onEachFeature: function (feature, layer) {
+            if (feature.properties && feature.properties.name) {
+              layer.bindPopup('<b>' + feature.properties.name + '</b>');
+            }
+          }
+        }).addTo(map);
+
+        // Otomatis arahkan kamera ke area lokasi data
+        var bounds = geojsonLayer.getBounds();
+        if (bounds.isValid()) {
+          map.fitBounds(bounds);
+        }
+      })
+      .catch(error => {
+        console.error("Gagal memuat GeoJSON:", error);
+      });
+  </script>
+
+</body>
+</html>
