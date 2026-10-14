@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Peta GeoJSON Saya</title>
+  <!-- 1. JUDUL TAB BROWSER -->
+  <title>Peta Informasi</title>
+  
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -14,31 +16,189 @@
       width: 100%;
       margin: 0;
       padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
+    
     #map {
       height: 100vh;
       width: 100vw;
+    }
+
+    /* KOTAK INFORMASI, LEGENDA, & INPUT KOORDINAT */
+    .info-panel {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 15px 18px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      max-width: 280px;
+      backdrop-filter: blur(4px);
+    }
+
+    .info-panel h2 {
+      margin: 0 0 4px 0;
+      font-size: 16px;
+      color: #1a252f;
+      font-weight: 700;
+    }
+
+    .info-panel p {
+      margin: 0 0 10px 0;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .info-panel hr {
+      border: 0;
+      border-top: 1px solid #ddd;
+      margin: 10px 0;
+    }
+
+    .legenda-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .legenda-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: #444;
+    }
+
+    .simbol-sungai {
+      width: 22px;
+      height: 12px;
+      background-color: rgba(51, 136, 255, 0.4);
+      border: 2px solid #3388ff;
+      border-radius: 2px;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+
+    /* DESAIN FORM INPUT KOORDINAT */
+    .form-koordinat {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-koordinat input {
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .form-koordinat button {
+      padding: 7px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .form-koordinat button:hover {
+      background-color: #0056b3;
     }
   </style>
 </head>
 <body>
 
-  <!-- Wadah Peta -->
+  <!-- KOTAK UTAMA -->
+  <div class="info-panel">
+    <h2>PETA SUNGAI WALENNAE</h2>
+    <p>Wilayah Cabenge dan Sekitarnya</p>
+    
+    <hr>
+
+    <!-- FITUR INPUT KOORDINAT -->
+    <div class="legenda-title">Cari Koordinat:</div>
+    <div class="form-koordinat">
+      <input type="number" step="any" id="latInput" placeholder="Latitude / Lintang (misal: -4.385)">
+      <input type="number" step="any" id="lngInput" placeholder="Longitude / Bujur (misal: 119.890)">
+      <button onclick="cariKoordinat()">Go to Location</button>
+    </div>
+
+    <hr>
+
+    <!-- LEGENDA -->
+    <div class="legenda-title">Legenda / Keterangan:</div>
+    <div class="legenda-item">
+      <span class="simbol-sungai"></span> Area Sungai Walennae
+    </div>
+  </div>
+
+  <!-- WADAH PETA -->
   <div id="map"></div>
 
   <!-- JS Leaflet -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    // 1. Buat Peta Leaflet
-    var map = L.map('map').setView([-2.548926, 118.014863], 5);
+    // 1. PETA DASAR
+    var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+    });
 
-    // 2. Tambahkan Peta Dasar OpenStreetMap
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+    var googleSatelit = L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+      attribution: '&copy; Google Maps'
+    });
 
-    // 3. Baca File GeoJSON
+    // 2. INISIALISASI PETA
+    var map = L.map('map', {
+      center: [-2.548926, 118.014863],
+      zoom: 5,
+      layers: [googleSatelit]
+    });
+
+    // 3. LAYER CONTROL
+    var baseMaps = {
+      "Google Satelit": googleSatelit,
+      "Peta Standar (OSM)": osm
+    };
+    L.control.layers(baseMaps).addTo(map);
+
+    // Variabel untuk menyimpan penanda lokasi pencarian
+    var markerPencarian = null;
+
+    // 4. FUNGSI UNTUK MENCARI KOORDINAT
+    function cariKoordinat() {
+      var lat = parseFloat(document.getElementById('latInput').value);
+      var lng = parseFloat(document.getElementById('lngInput').value);
+
+      if (isNaN(lat) || isNaN(lng)) {
+        alert("Masukkan angka koordinat Latitude dan Longitude yang valid!");
+        return;
+      }
+
+      // Arahkan kamera peta ke koordinat baru dengan zoom level 16
+      map.setView([lat, lng], 16);
+
+      // Hapus penanda lama jika ada
+      if (markerPencarian) {
+        map.removeLayer(markerPencarian);
+      }
+
+      // Buat penanda baru di lokasi pencarian + popup
+      markerPencarian = L.marker([lat, lng]).addTo(map)
+        .bindPopup(`<b>Lokasi Input</b><br>Lat: ${lat}<br>Lng: ${lng}`)
+        .openPopup();
+    }
+
+    // 5. MEMUAT DATA GEOJSON
     fetch('map.geojson')
       .then(response => {
         if (!response.ok) {
@@ -47,8 +207,15 @@
         return response.json();
       })
       .then(geojsonData => {
-        // Tampilkan data ke peta
         var geojsonLayer = L.geoJSON(geojsonData, {
+          style: function(feature) {
+            return {
+              color: '#3388ff',
+              weight: 2,
+              fillColor: '#3388ff',
+              fillOpacity: 0.4
+            };
+          },
           onEachFeature: function (feature, layer) {
             if (feature.properties && feature.properties.name) {
               layer.bindPopup('<b>' + feature.properties.name + '</b>');
@@ -56,7 +223,6 @@
           }
         }).addTo(map);
 
-        // Otomatis arahkan kamera ke area lokasi data
         var bounds = geojsonLayer.getBounds();
         if (bounds.isValid()) {
           map.fitBounds(bounds);
