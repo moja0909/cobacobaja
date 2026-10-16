@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!-- 1. JUDUL TAB BROWSER -->
-  <title>Peta Informasi</title>
+  <title>Peta Batas Administrasi Wilayah</title>
   
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,7 +23,7 @@
       width: 100vw;
     }
 
-    /* KOTAK INFORMASI, LEGENDA, & INPUT KOORDINAT */
+    /* KOTAK PANEL UTAMA MELAYANG */
     .info-panel {
       position: absolute;
       top: 15px;
@@ -35,6 +34,8 @@
       border-radius: 10px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
       max-width: 280px;
+      max-height: 85vh;
+      overflow-y: auto;
       backdrop-filter: blur(4px);
     }
 
@@ -72,17 +73,16 @@
       color: #444;
     }
 
-    .simbol-sungai {
-      width: 22px;
-      height: 12px;
-      background-color: rgba(51, 136, 255, 0.4);
-      border: 2px solid #3388ff;
-      border-radius: 2px;
+    .simbol-warna {
+      width: 18px;
+      height: 14px;
+      border: 1px solid #333;
+      border-radius: 3px;
       margin-right: 10px;
       flex-shrink: 0;
     }
 
-    /* DESAIN FORM INPUT KOORDINAT */
+    /* FORM INPUT KOORDINAT */
     .form-koordinat {
       display: flex;
       flex-direction: column;
@@ -105,44 +105,47 @@
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s;
     }
 
-    .form-koordinat button:hover {
-      background-color: #0056b3;
+    /* DESAIN LABEL NAMA DAERAH DI PETA */
+    .label-wilayah {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #222;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      white-space: nowrap;
     }
   </style>
 </head>
 <body>
 
-  <!-- KOTAK UTAMA -->
   <div class="info-panel">
-    <h2>PETA SUNGAI WALENNAE</h2>
-    <p>Wilayah Cabenge dan Sekitarnya</p>
+    <h2>PETA BATAS ADMINISTRASI</h2>
+    <p>Kabupaten Soppeng / Sekitarnya</p>
     
     <hr>
 
-    <!-- FITUR INPUT KOORDINAT -->
     <div class="legenda-title">Cari Koordinat:</div>
     <div class="form-koordinat">
-      <input type="number" step="any" id="latInput" placeholder="Latitude / Lintang (misal: -4.385)">
-      <input type="number" step="any" id="lngInput" placeholder="Longitude / Bujur (misal: 119.890)">
+      <input type="number" step="any" id="latInput" placeholder="Latitude (misal: -4.385)">
+      <input type="number" step="any" id="lngInput" placeholder="Longitude (misal: 119.890)">
       <button onclick="cariKoordinat()">Go to Location</button>
     </div>
 
     <hr>
 
-    <!-- LEGENDA -->
-    <div class="legenda-title">Legenda / Keterangan:</div>
-    <div class="legenda-item">
-      <span class="simbol-sungai"></span> Area Sungai Walennae
+    <div class="legenda-title">Legenda Wilayah:</div>
+    <div id="kotakLegenda">
+      <!-- Legenda terisi otomatis -->
     </div>
   </div>
 
-  <!-- WADAH PETA -->
   <div id="map"></div>
 
-  <!-- JS Leaflet -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
@@ -157,72 +160,118 @@
       attribution: '&copy; Google Maps'
     });
 
-    // 2. INISIALISASI PETA
     var map = L.map('map', {
-      center: [-2.548926, 118.014863],
-      zoom: 5,
+      center: [-4.35, 119.88],
+      zoom: 10,
       layers: [googleSatelit]
     });
 
-    // 3. LAYER CONTROL
     var baseMaps = {
       "Google Satelit": googleSatelit,
       "Peta Standar (OSM)": osm
     };
     L.control.layers(baseMaps).addTo(map);
 
-    // Variabel untuk menyimpan penanda lokasi pencarian
     var markerPencarian = null;
 
-    // 4. FUNGSI UNTUK MENCARI KOORDINAT
     function cariKoordinat() {
-      var lat = parseFloat(document.getElementById('latInput').value);
-      var lng = parseFloat(document.getElementById('lngInput').value);
+      var input1 = parseFloat(document.getElementById('latInput').value);
+      var input2 = parseFloat(document.getElementById('lngInput').value);
 
-      if (isNaN(lat) || isNaN(lng)) {
+      if (isNaN(input1) || isNaN(input2)) {
         alert("Masukkan angka koordinat Latitude dan Longitude yang valid!");
         return;
       }
 
-      // Arahkan kamera peta ke koordinat baru dengan zoom level 16
-      map.setView([lat, lng], 16);
+      var lat, lng;
+      if (Math.abs(input1) > 90) {
+        lng = input1;
+        lat = input2;
+      } else {
+        lat = input1;
+        lng = input2;
+      }
 
-      // Hapus penanda lama jika ada
+      map.setView([lat, lng], 14);
+
       if (markerPencarian) {
         map.removeLayer(markerPencarian);
       }
 
-      // Buat penanda baru di lokasi pencarian + popup
       markerPencarian = L.marker([lat, lng]).addTo(map)
         .bindPopup(`<b>Lokasi Input</b><br>Lat: ${lat}<br>Lng: ${lng}`)
         .openPopup();
     }
 
-    // 5. MEMUAT DATA GEOJSON
+    // PALET WARNA UNTUK TIAP WILAYAH
+    var daftarWarna = [
+      '#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', 
+      '#911eb4', '#46f0f0', '#f032e6', '#bcfd4c', '#fabebe', 
+      '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000'
+    ];
+
+    var petaWarnaWilayah = {};
+    var indeksWarna = 0;
+
+    // FUNGSI UNTUK MEMBACA NAMA DAERAH (MENGUTAMAKAN "Name" DENGAN 'N' BESAR)
+    function dapatkanNamaWilayah(props) {
+      if (!props) return "Tanpa Nama";
+      return props.Name || props.name || props.NAMOBJ || props.WADMKC || props.NAMARBD || "Wilayah " + (indeksWarna + 1);
+    }
+
+    // 2. MEMUAT GEOJSON
     fetch('map.geojson')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('File map.geojson tidak ditemukan!');
-        }
-        return response.json();
-      })
+      .then(response => response.json())
       .then(geojsonData => {
+        
         var geojsonLayer = L.geoJSON(geojsonData, {
           style: function(feature) {
+            var namaWilayah = dapatkanNamaWilayah(feature.properties);
+
+            // Beri warna unik untuk setiap nama wilayah
+            if (!petaWarnaWilayah[namaWilayah]) {
+              petaWarnaWilayah[namaWilayah] = daftarWarna[indeksWarna % daftarWarna.length];
+              indeksWarna++;
+            }
+
             return {
-              color: '#3388ff',
-              weight: 2,
-              fillColor: '#3388ff',
-              fillOpacity: 0.4
+              color: '#ffffff',                          // Garis tepi putih
+              weight: 2,                                 // Ketebalan garis
+              fillColor: petaWarnaWilayah[namaWilayah],  // Warna beda tiap kecamatan
+              fillOpacity: 0.6                           // Transparansi warna
             };
           },
           onEachFeature: function (feature, layer) {
-            if (feature.properties && feature.properties.name) {
-              layer.bindPopup('<b>' + feature.properties.name + '</b>');
-            }
+            var namaWilayah = dapatkanNamaWilayah(feature.properties);
+
+            // Popup saat diklik
+            layer.bindPopup('<b>Kecamatan:</b><br>' + namaWilayah);
+
+            // Label melayang di tengah wilayah
+            layer.bindTooltip(namaWilayah, {
+              permanent: true,
+              direction: 'center',
+              className: 'label-wilayah'
+            });
           }
         }).addTo(map);
 
+        // 3. LEGEND A OTOMATIS
+        var wadahLegenda = document.getElementById('kotakLegenda');
+        wadahLegenda.innerHTML = '';
+
+        for (var nama in petaWarnaWilayah) {
+          var warna = petaWarnaWilayah[nama];
+          var itemLegenda = `
+            <div class="legenda-item">
+              <span class="simbol-warna" style="background-color: ${warna};"></span>
+              ${nama}
+            </div>
+          `;
+          wadahLegenda.innerHTML += itemLegenda;
+        }
+
+        // Auto Zoom ke lokasi
         var bounds = geojsonLayer.getBounds();
         if (bounds.isValid()) {
           map.fitBounds(bounds);
